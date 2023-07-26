@@ -173,7 +173,7 @@ def build_tr(l: int, r: int, ps: list[Point]) -> tuple[QuadEdge, QuadEdge]:
             basel = connect(basel.sym, lcand.sym)
     return ldo, rdo
 
-def deulaunay(ps: list[Point]):
+def delaunay(ps: list[Point]):
     print("start running...")
     ps.sort(key=lambda p: (p.x, p.y))
     res = build_tr(0, len(ps) - 1, ps)
@@ -215,7 +215,7 @@ def main():
         Point(2, 3),
         Point(3, 4)
     ]
-    print(deulaunay(points))
+    print(delaunay(points))
 
 if __name__ == "__main__":
     main()

@@ -1,36 +1,45 @@
-typedef long long ll;
+#include <vector>
+#include <utility>
+#include <algorithm>
 
-bool ge(const ll& a, const ll& b) { return a >= b; }
-bool le(const ll& a, const ll& b) { return a <= b; }
-bool eq(const ll& a, const ll& b) { return a == b; }
-bool gt(const ll& a, const ll& b) { return a > b; }
-bool lt(const ll& a, const ll& b) { return a < b; }
-int sgn(const ll& a) { return a >= 0 ? a ? 1 : 0 : -1; }
+using ll = long long;
+
+int sgn(const ll& a) { 
+    return a >= 0 ? a ? 1 : 0 : -1;
+}
 
 struct pt {
     ll x, y;
-    pt() { }
-    pt(ll _x, ll _y) : x(_x), y(_y) { }
+    
+    pt() = default;
+    pt(ll x, ll y) : x(x), y(y) {}
+
     pt operator-(const pt& p) const {
         return pt(x - p.x, y - p.y);
     }
+    
     ll cross(const pt& p) const {
         return x * p.y - y * p.x;
     }
+    
     ll cross(const pt& a, const pt& b) const {
         return (a - *this).cross(b - *this);
     }
+    
     ll dot(const pt& p) const {
         return x * p.x + y * p.y;
     }
+    
     ll dot(const pt& a, const pt& b) const {
         return (a - *this).dot(b - *this);
     }
+    
     ll sqrLength() const {
         return this->dot(*this);
     }
+    
     bool operator==(const pt& p) const {
-        return eq(x, p.x) && eq(y, p.y);
+        return x == p.x && y == p.y;
     }
 };
 
@@ -41,15 +50,28 @@ struct QuadEdge {
     QuadEdge* rot = nullptr;
     QuadEdge* onext = nullptr;
     bool used = false;
+
     QuadEdge* rev() const {
         return rot->rot;
     }
-    QuadEdge* lnext() const {
-        return rot->rev()->onext->rot;
+
+    
+    QuadEdge* tor() const {
+        return rot->rev();
     }
+
+    QuadEdge* lnext() const {
+        return tor()->onext->rot;
+    }
+    
+    QuadEdge* rprev() const {
+        return rev()->onext;
+    }
+
     QuadEdge* oprev() const {
         return rot->onext->rot;
     }
+
     pt dest() const {
         return rev()->origin;
     }
@@ -75,8 +97,8 @@ QuadEdge* make_edge(pt from, pt to) {
 }
 
 void splice(QuadEdge* a, QuadEdge* b) {
-    swap(a->onext->rot->onext, b->onext->rot->onext);
-    swap(a->onext, b->onext);
+    std::swap(a->onext->rot->onext, b->onext->rot->onext);
+    std::swap(a->onext, b->onext);
 }
 
 void delete_edge(QuadEdge* e) {
@@ -96,11 +118,11 @@ QuadEdge* connect(QuadEdge* a, QuadEdge* b) {
 }
 
 bool left_of(pt p, QuadEdge* e) {
-    return gt(p.cross(e->origin, e->dest()), 0);
+    return p.cross(e->origin, e->dest()) > 0;
 }
 
 bool right_of(pt p, QuadEdge* e) {
-    return lt(p.cross(e->origin, e->dest()), 0);
+    return p.cross(e->origin, e->dest()) < 0;
 }
 
 template <class T>
@@ -137,27 +159,28 @@ bool in_circle(pt a, pt b, pt c, pt d) {
 #endif
 }
 
-pair<QuadEdge*, QuadEdge*> build_tr(int l, int r, vector<pt>& p) {
-    if (r - l + 1 == 2) {
+std::pair<QuadEdge*, QuadEdge*> build_tr(int l, int r, std::vector<pt>& p) {
+    if (r - l == 1) {
         QuadEdge* res = make_edge(p[l], p[r]);
-        return make_pair(res, res->rev());
+        return std::pair(res, res->rev());
     }
-    if (r - l + 1 == 3) {
-        QuadEdge *a = make_edge(p[l], p[l + 1]), *b = make_edge(p[l + 1], p[r]);
+    if (r - l == 2) {
+        QuadEdge* a = make_edge(p[l], p[l + 1]);
+        QuadEdge* b = make_edge(p[l + 1], p[r]);
         splice(a->rev(), b);
         int sg = sgn(p[l].cross(p[l + 1], p[r]));
         if (sg == 0)
-            return make_pair(a, b->rev());
+            return std::pair(a, b->rev());
         QuadEdge* c = connect(b, a);
         if (sg == 1)
-            return make_pair(a, b->rev());
+            return std::pair(a, b->rev());
         else
-            return make_pair(c->rev(), c);
+            return std::pair(c->rev(), c);
     }
     int mid = (l + r) / 2;
     QuadEdge *ldo, *ldi, *rdo, *rdi;
-    tie(ldo, ldi) = build_tr(l, mid, p);
-    tie(rdi, rdo) = build_tr(mid + 1, r, p);
+    auto [ldo, ldi] = build_tr(l, mid, p);
+    auto [rdi, rdo] = build_tr(mid + 1, r, p);
     while (true) {
         if (left_of(rdi->origin, ldi)) {
             ldi = ldi->lnext();
@@ -203,17 +226,17 @@ pair<QuadEdge*, QuadEdge*> build_tr(int l, int r, vector<pt>& p) {
         else
             basel = connect(basel->rev(), lcand->rev());
     }
-    return make_pair(ldo, rdo);
+    return std::pair(ldo, rdo);
 }
 
-vector<tuple<pt, pt, pt>> delaunay(vector<pt> p) {
+std::vector<std::tuple<pt, pt, pt>> delaunay(std::vector<pt> p) {
     sort(p.begin(), p.end(), [](const pt& a, const pt& b) {
-        return lt(a.x, b.x) || (eq(a.x, b.x) && lt(a.y, b.y));
+        return a.x < b.x || (a.x == b.x && a.y < b.y);
     });
     auto res = build_tr(0, (int)p.size() - 1, p);
     QuadEdge* e = res.first;
-    vector<QuadEdge*> edges = {e};
-    while (lt(e->onext->dest().cross(e->dest(), e->origin), 0))
+    std::vector<QuadEdge*> edges = {e};
+    while (e->onext->dest().cross(e->dest(), e->origin) < 0)
         e = e->onext;
     auto add = [&p, &e, &edges]() {
         QuadEdge* curr = e;
@@ -226,14 +249,14 @@ vector<tuple<pt, pt, pt>> delaunay(vector<pt> p) {
     };
     add();
     p.clear();
-    int kek = 0;
-    while (kek < (int)edges.size()) {
+    std::size_t kek = 0;
+    while (kek < edges.size()) {
         if (!(e = edges[kek++])->used)
             add();
     }
-    vector<tuple<pt, pt, pt>> ans;
+    std::vector<std::tuple<pt, pt, pt>> ans;
     for (int i = 0; i < (int)p.size(); i += 3) {
-        ans.push_back(make_tuple(p[i], p[i + 1], p[i + 2]));
+        ans.push_back(std::tuple(p[i], p[i + 1], p[i + 2]));
     }
     return ans;
 }
